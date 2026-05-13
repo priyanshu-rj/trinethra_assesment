@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Trinethra — Fellow Feedback Analyzer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Sora:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #181c27;
+    --surface2: #1e2333;
+    --border: #2a2f42;
+    --border2: #353b52;
+    --accent: #4f8ef7;
+    --accent-glow: rgba(79,142,247,0.15);
+    --green: #34d399;
+    --green-bg: rgba(52,211,153,0.1);
+    --red: #f87171;
+    --red-bg: rgba(248,113,113,0.1);
+    --yellow: #fbbf24;
+    --yellow-bg: rgba(251,191,36,0.1);
+    --text: #e2e8f0;
+    --text2: #94a3b8;
+    --text3: #64748b;
+    --mono: 'IBM Plex Mono', monospace;
+    --sans: 'Sora', sans-serif;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: var(--sans);
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    line-height: 1.6;
+  }
+
+  /* ── Header ── */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 32px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    position: sticky; top: 0; z-index: 100;
+  }
+  .logo { display: flex; align-items: center; gap: 12px; }
+  .logo-mark {
+    width: 36px; height: 36px;
+    background: var(--accent);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--mono); font-weight: 500; font-size: 14px;
+    color: #fff; letter-spacing: -1px;
+  }
+  .logo-text { font-size: 18px; font-weight: 600; letter-spacing: -0.3px; }
+  .logo-sub { font-size: 12px; color: var(--text3); font-weight: 400; }
+
+  .header-right { display: flex; align-items: center; gap: 16px; }
+  .ollama-pill {
+    display: flex; align-items: center; gap: 6px;
+    padding: 4px 12px; border-radius: 20px;
+    font-size: 12px; font-family: var(--mono);
+    border: 1px solid var(--border2); color: var(--text2);
+    background: var(--surface2);
+  }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text3); }
+  .dot.connected { background: var(--green); box-shadow: 0 0 6px var(--green); animation: pulse 2s infinite; }
+  .dot.error { background: var(--red); }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.5} }
+
+  /* ── Layout ── */
+  .app { display: grid; grid-template-columns: 420px 1fr; height: calc(100vh - 65px); overflow: hidden; }
+
+  /* ── Input Panel ── */
+  .input-panel {
+    border-right: 1px solid var(--border);
+    display: flex; flex-direction: column;
+    overflow: hidden;
+  }
+  .panel-header {
+    padding: 20px 24px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .panel-title { font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--text2); }
+
+  .samples-bar {
+    padding: 12px 24px;
+    border-bottom: 1px solid var(--border);
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .samples-label { font-size: 11px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.8px; font-weight: 500; }
+  .samples-btns { display: flex; gap: 6px; flex-wrap: wrap; }
+  .sample-btn {
+    padding: 4px 10px; border-radius: 4px;
+    border: 1px solid var(--border2);
+    background: var(--surface2); color: var(--text2);
+    font-size: 11px; font-family: var(--sans);
+    cursor: pointer; transition: all .15s;
+  }
+  .sample-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-glow); }
+
+  textarea {
+    flex: 1;
+    background: transparent;
+    border: none; outline: none; resize: none;
+    color: var(--text); font-family: var(--sans); font-size: 13.5px;
+    line-height: 1.7; padding: 20px 24px;
+  }
+  textarea::placeholder { color: var(--text3); }
+
+  .input-footer {
+    padding: 16px 24px;
+    border-top: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  }
+  .char-count { font-size: 11px; color: var(--text3); font-family: var(--mono); }
+
+  .model-select {
+    background: var(--surface2); border: 1px solid var(--border2);
+    color: var(--text2); font-family: var(--mono); font-size: 11px;
+    padding: 4px 8px; border-radius: 4px; outline: none; cursor: pointer;
+  }
+  .model-select:focus { border-color: var(--accent); }
+
+  .analyze-btn {
+    display: flex; align-items: center; gap: 8px;
+    padding: 10px 24px; border-radius: 6px;
+    background: var(--accent); color: #fff;
+    border: none; font-family: var(--sans); font-size: 14px; font-weight: 600;
+    cursor: pointer; transition: all .15s; white-space: nowrap;
+  }
+  .analyze-btn:hover { background: #6ba3ff; transform: translateY(-1px); }
+  .analyze-btn:disabled { background: var(--border2); color: var(--text3); cursor: not-allowed; transform: none; }
+  .analyze-btn .spinner {
+    width: 14px; height: 14px;
+    border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff;
+    border-radius: 50%; animation: spin .6s linear infinite; display: none;
+  }
+  .analyze-btn.loading .spinner { display: block; }
+  .analyze-btn.loading .btn-text { opacity: 0.7; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── Output Panel ── */
+  .output-panel { overflow-y: auto; display: flex; flex-direction: column; }
+
+  .empty-state {
+    flex: 1; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 12px; color: var(--text3); padding: 48px;
+    text-align: center;
+  }
+  .empty-icon { font-size: 48px; opacity: 0.3; }
+  .empty-state h3 { font-size: 16px; font-weight: 500; color: var(--text2); }
+  .empty-state p { font-size: 13px; max-width: 340px; }
+
+  /* ── Result sections ── */
+  #result { padding: 0; }
+
+  .result-bar {
+    display: flex; align-items: stretch;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    position: sticky; top: 0; z-index: 10;
+  }
+  .score-badge {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 20px 28px;
+    border-right: 1px solid var(--border);
+    min-width: 120px;
+  }
+  .score-num {
+    font-size: 52px; font-weight: 700; line-height: 1;
+    font-family: var(--mono);
+  }
+  .score-label { font-size: 11px; color: var(--text2); margin-top: 4px; text-align: center; }
+  .score-band {
+    font-size: 10px; margin-top: 2px; padding: 2px 8px;
+    border-radius: 10px; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase;
+  }
+  .band-need { background: var(--red-bg); color: var(--red); }
+  .band-productivity { background: var(--yellow-bg); color: var(--yellow); }
+  .band-performance { background: var(--green-bg); color: var(--green); }
+
+  .score-detail { flex: 1; padding: 16px 24px; display: flex; flex-direction: column; gap: 8px; }
+  .score-confidence {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 11px; color: var(--text3); font-family: var(--mono);
+  }
+  .justification { font-size: 13px; color: var(--text2); line-height: 1.7; }
+
+  .bias-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+  .bias-chip {
+    font-size: 11px; padding: 3px 10px; border-radius: 4px;
+    background: rgba(251,191,36,0.12); color: var(--yellow);
+    border: 1px solid rgba(251,191,36,0.25);
+    font-family: var(--mono);
+  }
+
+  /* Sections */
+  .section { padding: 24px 28px; border-bottom: 1px solid var(--border); }
+  .section-header {
+    display: flex; align-items: center; gap: 8px;
+    margin-bottom: 16px;
+  }
+  .section-title { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--text2); }
+  .section-count {
+    font-size: 11px; padding: 2px 8px; border-radius: 10px;
+    background: var(--surface2); color: var(--text3); font-family: var(--mono);
+  }
+
+  /* Evidence */
+  .evidence-list { display: flex; flex-direction: column; gap: 10px; }
+  .evidence-item {
+    border-radius: 8px; padding: 12px 14px;
+    border-left: 3px solid var(--border2);
+  }
+  .evidence-item.positive { border-color: var(--green); background: var(--green-bg); }
+  .evidence-item.negative { border-color: var(--red); background: var(--red-bg); }
+  .evidence-item.neutral { border-color: var(--accent); background: var(--accent-glow); }
+  .evidence-quote {
+    font-size: 13px; font-style: italic; color: var(--text); margin-bottom: 6px;
+    line-height: 1.6;
+  }
+  .evidence-meta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .evidence-signal {
+    font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;
+    font-family: var(--mono);
+  }
+  .evidence-item.positive .evidence-signal { color: var(--green); }
+  .evidence-item.negative .evidence-signal { color: var(--red); }
+  .evidence-item.neutral .evidence-signal { color: var(--accent); }
+  .evidence-dim {
+    font-size: 10px; padding: 2px 8px; border-radius: 3px;
+    background: var(--surface2); color: var(--text3);
+    font-family: var(--mono); border: 1px solid var(--border2);
+  }
+  .evidence-interp { font-size: 12px; color: var(--text2); margin-top: 6px; }
+
+  /* KPI Mapping */
+  .kpi-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
+  .kpi-card {
+    background: var(--surface2); border: 1px solid var(--border2);
+    border-radius: 8px; padding: 12px;
+  }
+  .kpi-name { font-size: 12px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
+  .kpi-evidence { font-size: 11px; color: var(--text2); line-height: 1.5; }
+  .kpi-type {
+    margin-top: 8px; font-size: 10px; font-family: var(--mono); font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.5px;
+  }
+  .kpi-type.system { color: var(--green); }
+  .kpi-type.personal { color: var(--yellow); }
+
+  /* Gaps */
+  .gap-list { display: flex; flex-direction: column; gap: 10px; }
+  .gap-item {
+    background: rgba(248,113,113,0.06); border: 1px solid rgba(248,113,113,0.2);
+    border-radius: 8px; padding: 12px 14px;
+  }
+  .gap-label { font-size: 12px; font-weight: 600; color: var(--red); margin-bottom: 4px; }
+  .gap-detail { font-size: 12px; color: var(--text2); line-height: 1.5; }
+
+  /* Follow-up Questions */
+  .question-list { display: flex; flex-direction: column; gap: 10px; counter-reset: q; }
+  .question-item {
+    background: var(--surface2); border: 1px solid var(--border2);
+    border-radius: 8px; padding: 14px 16px;
+    counter-increment: q;
+  }
+  .question-num {
+    font-size: 10px; font-family: var(--mono); color: var(--accent);
+    font-weight: 600; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;
+  }
+  .question-text { font-size: 13.5px; color: var(--text); line-height: 1.6; font-weight: 500; margin-bottom: 8px; }
+  .question-gap {
+    font-size: 10px; display: inline-block; padding: 2px 8px;
+    background: var(--accent-glow); color: var(--accent);
+    border-radius: 3px; font-family: var(--mono);
+    border: 1px solid rgba(79,142,247,0.2); margin-bottom: 6px;
+  }
+  .question-looking { font-size: 11px; color: var(--text3); }
+
+  /* Error state */
+  .error-box {
+    margin: 24px; padding: 16px; border-radius: 8px;
+    background: var(--red-bg); border: 1px solid rgba(248,113,113,0.3);
+    color: var(--red); font-size: 13px;
+  }
+  .error-box strong { display: block; margin-bottom: 4px; }
+
+  /* Loading overlay */
+  .loading-overlay {
+    display: none; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 16px; padding: 64px 32px; flex: 1;
+  }
+  .loading-overlay.visible { display: flex; }
+  .loading-spinner {
+    width: 40px; height: 40px;
+    border: 3px solid var(--border2); border-top-color: var(--accent);
+    border-radius: 50%; animation: spin .8s linear infinite;
+  }
+  .loading-text { font-size: 14px; color: var(--text2); font-family: var(--mono); }
+  .loading-sub { font-size: 12px; color: var(--text3); }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-mark">▲T</div>
+    <div>
+      <div class="logo-text">Trinethra</div>
+      <div class="logo-sub">Fellow Feedback Analyzer</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <select class="model-select" id="modelSelect">
+      <option value="llama3.2">llama3.2</option>
+      <option value="mistral">mistral</option>
+      <option value="phi3">phi3</option>
+      <option value="gemma">gemma</option>
+      <option value="llama3">llama3</option>
+    </select>
+    <div class="ollama-pill">
+      <div class="dot" id="ollamaDot"></div>
+      <span id="ollamaStatus">Checking…</span>
+    </div>
+  </div>
+</header>
+
+<div class="app">
+
+  <!-- Input Panel -->
+  <div class="input-panel">
+    <div class="panel-header">
+      <span class="panel-title">Supervisor Transcript</span>
+    </div>
+    <div class="samples-bar">
+      <div class="samples-label">Load Sample</div>
+      <div class="samples-btns" id="sampleBtns">
+        <div class="sample-btn" style="color:var(--text3)">Loading…</div>
+      </div>
+    </div>
+    <textarea id="transcriptInput" placeholder="Paste the supervisor interview transcript here…
+
+The intern spoke with the supervisor about the Fellow's performance. Paste the full transcript text — typically 200-600 words describing what the Fellow does, how they perform, and any feedback.
+
+Or click a sample above to load a test case."></textarea>
+    <div class="input-footer">
+      <span class="char-count" id="charCount">0 words</span>
+      <button class="analyze-btn" id="analyzeBtn" onclick="runAnalysis()">
+        <div class="spinner"></div>
+        <span class="btn-text">Run Analysis</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Output Panel -->
+  <div class="output-panel" id="outputPanel">
+    <div class="empty-state" id="emptyState">
+      <div class="empty-icon">◎</div>
+      <h3>No analysis yet</h3>
+      <p>Paste a supervisor transcript and click <strong>Run Analysis</strong> to generate a structured assessment draft for intern review.</p>
+      <p style="margin-top:8px; font-size:11px; color:var(--text3)">This tool produces a DRAFT. The intern reviews and edits every finding before finalizing.</p>
+    </div>
+    <div class="loading-overlay" id="loadingOverlay">
+      <div class="loading-spinner"></div>
+      <div class="loading-text">Analyzing transcript…</div>
+      <div class="loading-sub">Running through local Ollama model. This may take 30-60 seconds.</div>
+    </div>
+    <div id="result" style="display:none"></div>
+  </div>
+
+</div>
+
+<script>
+const API = 'http://localhost:3001/api';
+let samples = [];
+
+// ── Init ──
+(async function init() {
+  checkOllama();
+  await loadSamples();
+  setupTextarea();
+})();
+
+async function checkOllama() {
+  const dot = document.getElementById('ollamaDot');
+  const status = document.getElementById('ollamaStatus');
+  try {
+    const res = await fetch(`${API}/ollama-status`);
+    const data = await res.json();
+    if (data.connected) {
+      dot.className = 'dot connected';
+      status.textContent = 'Ollama connected';
+      // Populate model dropdown with available models
+      if (data.models && data.models.length) {
+        const sel = document.getElementById('modelSelect');
+        sel.innerHTML = '';
+        data.models.forEach(m => {
+          const opt = document.createElement('option');
+          opt.value = m; opt.textContent = m;
+          sel.appendChild(opt);
+        });
+      }
+    } else {
+      dot.className = 'dot error';
+      status.textContent = 'Ollama offline';
+    }
+  } catch {
+    dot.className = 'dot error';
+    status.textContent = 'Ollama offline';
+  }
+}
+
+async function loadSamples() {
+  try {
+    const res = await fetch(`${API}/transcripts`);
+    samples = await res.json();
+    const container = document.getElementById('sampleBtns');
+    container.innerHTML = '';
+    samples.forEach(s => {
+      const btn = document.createElement('button');
+      btn.className = 'sample-btn';
+      btn.textContent = s.fellowName.split(' ')[0]; // First name only
+      btn.title = `${s.fellowName} — ${s.company}`;
+      btn.onclick = () => loadSample(s);
+      container.appendChild(btn);
+    });
+  } catch (err) {
+    console.warn('Could not load samples:', err);
+  }
+}
+
+function loadSample(s) {
+  document.getElementById('transcriptInput').value = s.transcript;
+  updateWordCount();
+}
+
+function setupTextarea() {
+  document.getElementById('transcriptInput').addEventListener('input', updateWordCount);
+}
+
+function updateWordCount() {
+  const text = document.getElementById('transcriptInput').value.trim();
+  const words = text ? text.split(/\s+/).length : 0;
+  document.getElementById('charCount').textContent = `${words} words`;
+}
+
+async function runAnalysis() {
+  const transcript = document.getElementById('transcriptInput').value.trim();
+  if (!transcript || transcript.split(/\s+/).length < 30) {
+    alert('Please paste a transcript with at least 30 words before running analysis.');
+    return;
+  }
+
+  const btn = document.getElementById('analyzeBtn');
+  const model = document.getElementById('modelSelect').value;
+
+  // Set loading state
+  btn.disabled = true;
+  btn.classList.add('loading');
+  btn.querySelector('.btn-text').textContent = 'Analyzing…';
+  document.getElementById('emptyState').style.display = 'none';
+  document.getElementById('result').style.display = 'none';
+  document.getElementById('loadingOverlay').classList.add('visible');
+
+  try {
+    const res = await fetch(`${API}/analyze`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ transcript, model })
+    });
+
+    const data = await res.json();
+
+    if (!res.ok || !data.success) {
+      showError(data.error || 'Unknown error from server');
+      return;
+    }
+
+    renderResult(data.analysis, data.model);
+  } catch (err) {
+    showError('Cannot reach the backend. Make sure the server is running on port 3001.');
+  } finally {
+    btn.disabled = false;
+    btn.classList.remove('loading');
+    btn.querySelector('.btn-text').textContent = 'Run Analysis';
+    document.getElementById('loadingOverlay').classList.remove('visible');
+  }
+}
+
+function showError(msg) {
+  document.getElementById('loadingOverlay').classList.remove('visible');
+  const result = document.getElementById('result');
+  result.style.display = 'block';
+  result.innerHTML = `<div class="error-box"><strong>Analysis Failed</strong>${escHtml(msg)}</div>`;
+}
+
+function renderResult(a, model) {
+  const result = document.getElementById('result');
+  result.style.display = 'block';
+
+  const bandClass = a.score.band === 'Need Attention' ? 'band-need'
+    : a.score.band === 'Performance' ? 'band-performance' : 'band-productivity';
+
+  const scoreColor = a.score.value <= 3 ? 'var(--red)'
+    : a.score.value <= 6 ? 'var(--yellow)' : 'var(--green)';
+
+  const biasHtml = a.score.biasesDetected && a.score.biasesDetected.length
+    ? `<div class="bias-chips">${a.score.biasesDetected.map(b =>
+        `<span class="bias-chip">⚠ ${escHtml(b)}</span>`).join('')}</div>`
+    : '';
+
+  const evidenceHtml = (a.evidence || []).map(e => `
+    <div class="evidence-item ${escHtml(e.signal)}">
+      <div class="evidence-quote">"${escHtml(e.quote)}"</div>
+      <div class="evidence-meta">
+        <span class="evidence-signal">${escHtml(e.signal)}</span>
+        <span class="evidence-dim">${escHtml(e.dimension)}</span>
+      </div>
+      ${e.interpretation ? `<div class="evidence-interp">${escHtml(e.interpretation)}</div>` : ''}
+    </div>
+  `).join('');
+
+  const kpiHtml = (a.kpiMapping || []).map(k => `
+    <div class="kpi-card">
+      <div class="kpi-name">${escHtml(k.kpi)}</div>
+      <div class="kpi-evidence">${escHtml(k.evidence)}</div>
+      <div class="kpi-type ${escHtml(k.systemOrPersonal)}">${k.systemOrPersonal === 'system' ? '✓ System (persists)' : '⚡ Personal (Fellow-dependent)'}</div>
+    </div>
+  `).join('');
+
+  const gapsHtml = (a.gaps || []).map(g => `
+    <div class="gap-item">
+      <div class="gap-label">Gap: ${escHtml(g.dimensionLabel || g.dimension)}</div>
+      <div class="gap-detail">${escHtml(g.detail)}</div>
+    </div>
+  `).join('');
+
+  const questionsHtml = (a.followUpQuestions || []).map((q, i) => `
+    <div class="question-item">
+      <div class="question-num">Question ${i + 1}</div>
+      <div class="question-text">${escHtml(q.question)}</div>
+      ${q.targetGap ? `<span class="question-gap">${escHtml(q.targetGap)}</span>` : ''}
+      ${q.lookingFor ? `<div class="question-looking">Looking for: ${escHtml(q.lookingFor)}</div>` : ''}
+    </div>
+  `).join('');
+
+  result.innerHTML = `
+    <!-- Score Bar -->
+    <div class="result-bar">
+      <div class="score-badge">
+        <div class="score-num" style="color:${scoreColor}">${a.score.value}</div>
+        <div class="score-label">${escHtml(a.score.label)}</div>
+        <div class="score-band ${bandClass}">${escHtml(a.score.band)}</div>
+      </div>
+      <div class="score-detail">
+        <div class="score-confidence">Confidence: ${escHtml(a.score.confidence)} &nbsp;·&nbsp; Model: ${escHtml(model)}</div>
+        <div class="justification">${escHtml(a.score.justification)}</div>
+        ${biasHtml}
+      </div>
+    </div>
+
+    <!-- Evidence -->
+    <div class="section">
+      <div class="section-header">
+        <span class="section-title">Extracted Evidence</span>
+        <span class="section-count">${(a.evidence||[]).length} quotes</span>
+      </div>
+      <div class="evidence-list">${evidenceHtml || '<p style="color:var(--text3);font-size:13px">No evidence extracted.</p>'}</div>
+    </div>
+
+    <!-- KPI Mapping -->
+    <div class="section">
+      <div class="section-header">
+        <span class="section-title">KPI Mapping</span>
+        <span class="section-count">${(a.kpiMapping||[]).length} KPIs</span>
+      </div>
+      <div class="kpi-grid">${kpiHtml || '<p style="color:var(--text3);font-size:13px">No KPIs identified.</p>'}</div>
+    </div>
+
+    <!-- Gaps -->
+    <div class="section">
+      <div class="section-header">
+        <span class="section-title">Coverage Gaps</span>
+        <span class="section-count">${(a.gaps||[]).length} gaps</span>
+      </div>
+      <div class="gap-list">${gapsHtml || '<p style="color:var(--green);font-size:13px">No significant gaps detected.</p>'}</div>
+    </div>
+
+    <!-- Follow-up Questions -->
+    <div class="section">
+      <div class="section-header">
+        <span class="section-title">Suggested Follow-up Questions</span>
+        <span class="section-count">${(a.followUpQuestions||[]).length} questions</span>
+      </div>
+      <div class="question-list">${questionsHtml || '<p style="color:var(--text3);font-size:13px">No follow-up questions generated.</p>'}</div>
+    </div>
+  `;
+
+  // Scroll output to top
+  document.getElementById('outputPanel').scrollTop = 0;
+}
+
+function escHtml(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#039;');
+}
+</script>
+</body>
+</html>
